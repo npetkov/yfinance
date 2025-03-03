@@ -23,6 +23,7 @@ from __future__ import print_function
 
 import datetime as _datetime
 import dateutil as _dateutil
+import random
 from typing import Dict, Union, List, Optional
 
 import pytz as _tz
@@ -45,8 +46,23 @@ try:
 except ImportError:
     import json as _json
 
-user_agent_headers = {
-    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
+USER_AGENTS = [
+    # Chrome
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36",
+
+    # Firefox
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:135.0) Gecko/20100101 Firefox/135.0",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 14.7; rv:135.0) Gecko/20100101 Firefox/135.0",
+    "Mozilla/5.0 (X11; Linux i686; rv:135.0) Gecko/20100101 Firefox/135.0",
+
+    # Safari
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_7_4) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.3 Safari/605.1.15",
+
+    # Edge
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36 Edg/131.0.2903.86"
+]
 
 
 def is_isin(string):
@@ -60,7 +76,7 @@ def get_all_by_isin(isin, proxy=None, session=None):
     from .base import _BASE_URL_
     session = session or _requests
     url = "{}/v1/finance/search?q={}".format(_BASE_URL_, isin)
-    data = session.get(url=url, proxies=proxy, headers=user_agent_headers)
+    data = session.get(url=url, proxies=proxy, headers={'User-Agent': random.choice(USER_AGENTS)})
     try:
         data = data.json()
         ticker = data.get('quotes', [{}])[0]
@@ -310,7 +326,7 @@ def _interval_to_timedelta(interval):
         return _dateutil.relativedelta(months=1)
     elif interval == "1wk":
         return _pd.Timedelta(days=7, unit='d')
-    else: 
+    else:
         return _pd.Timedelta(interval)
 
 
@@ -428,8 +444,8 @@ def set_df_tz(df, interval, tz):
 
 
 def fix_Yahoo_returning_live_separate(quotes, interval, tz_exchange):
-    # Yahoo bug fix. If market is open today then Yahoo normally returns 
-    # todays data as a separate row from rest-of week/month interval in above row. 
+    # Yahoo bug fix. If market is open today then Yahoo normally returns
+    # todays data as a separate row from rest-of week/month interval in above row.
     # Seems to depend on what exchange e.g. crypto OK.
     # Fix = merge them together
     n = quotes.shape[0]
@@ -621,9 +637,9 @@ def safe_merge_dfs(df_main, df_sub, interval):
 
 def fix_Yahoo_dst_issue(df, interval):
     if interval in ["1d", "1w", "1wk"]:
-        # These intervals should start at time 00:00. But for some combinations of date and timezone, 
+        # These intervals should start at time 00:00. But for some combinations of date and timezone,
         # Yahoo has time off by few hours (e.g. Brazil 23:00 around Jan-2022). Suspect DST problem.
-        # The clue is (a) minutes=0 and (b) hour near 0. 
+        # The clue is (a) minutes=0 and (b) hour near 0.
         # Obviously Yahoo meant 00:00, so ensure this doesn't affect date conversion:
         f_pre_midnight = (df.index.minute == 0) & (df.index.hour.isin([22, 23]))
         dst_error_hours = _np.array([0] * df.shape[0])

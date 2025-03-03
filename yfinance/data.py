@@ -1,4 +1,5 @@
 import functools
+import random
 from functools import lru_cache
 
 import hashlib
@@ -55,7 +56,7 @@ def decrypt_cryptojs_aes_stores(data):
         _cr = b"".join(int.to_bytes(i, length=4, byteorder="big", signed=True) for i in json.loads(_cr)["words"])
         password = hashlib.pbkdf2_hmac("sha1", _cs.encode("utf8"), _cr, 1, dklen=32).hex()
     else:
-        # Currently assume one extra key in dict, which is password. Print error if 
+        # Currently assume one extra key in dict, which is password. Print error if
         # more extra keys detected.
         new_keys = [k for k in data.keys() if k not in ["context", "plugins"]]
         l = len(new_keys)
@@ -146,8 +147,23 @@ class TickerData:
     """
     Have one place to retrieve data from Yahoo API in order to ease caching and speed up operations
     """
-    user_agent_headers = {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
+    user_agent_headers = [
+        # Chrome
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36",
+
+        # Firefox
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:135.0) Gecko/20100101 Firefox/135.0",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 14.7; rv:135.0) Gecko/20100101 Firefox/135.0",
+        "Mozilla/5.0 (X11; Linux i686; rv:135.0) Gecko/20100101 Firefox/135.0",
+
+        # Safari
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_7_4) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.3 Safari/605.1.15",
+
+        # Edge
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36 Edg/131.0.2903.86"
+    ]
 
     def __init__(self, ticker: str, session=None):
         self.ticker = ticker
@@ -160,7 +176,7 @@ class TickerData:
             params=params,
             proxies=proxy,
             timeout=timeout,
-            headers=user_agent_headers or self.user_agent_headers)
+            headers=user_agent_headers or {'User-Agent': random.choice(self.user_agent_headers)})
         return response
 
     @lru_cache_freezeargs
